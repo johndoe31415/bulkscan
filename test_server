@@ -1,0 +1,44 @@
+#!/usr/bin/python3
+#	bulkscan - Document scanning and maintenance solution
+#	Copyright (C) 2019-2019 Johannes Bauer
+#
+#	This file is part of bulkscan.
+#
+#	bulkscan is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	bulkscan is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with bulkscan; if not, write to the Free Software
+#	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import sys
+import subprocess
+import time
+
+argument = sys.argv[1] if (len(sys.argv) >= 2) else None
+
+if argument == "sequential":
+	for i in range(30):
+		subprocess.check_call([ "curl", "http://127.0.0.1:5000/debug" ])
+elif argument == "parallel":
+	t0 = time.time()
+	procs = [ ]
+	for i in range(20):
+		proc = subprocess.Popen([ "curl", "http://127.0.0.1:5000/debug/long" ])
+		procs.append(proc)
+	for proc in procs:
+		proc.wait()
+	t1 = time.time()
+	print(t1 - t0)
+else:
+	print("%s [sequential|parallel]" % (sys.argv[0]))
+	sys.exit(1)

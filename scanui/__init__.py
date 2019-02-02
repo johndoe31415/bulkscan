@@ -23,9 +23,11 @@ import os
 import json
 from flask import Flask, send_file, send_from_directory, jsonify, request, abort, redirect
 from .Controller import Controller
+from .Debug import Debug
 
 app = Flask(__name__, static_folder = None)
 ctrlr = Controller(app)
+dbg = Debug()
 
 @app.route("/")
 def index():
@@ -74,3 +76,12 @@ def autocompletion():
 def document_create():
 	indata = request.json
 	return jsonify(ctrlr.create_document(indata["files"], indata["tags"], indata["attrs"]))
+
+@app.route("/debug")
+def debug():
+	return jsonify(dbg.get())
+
+@app.route("/debug/long")
+def debug_long():
+	dbg.long()
+	return "OK\n"
