@@ -1,0 +1,9 @@
+{
+	"scan_cmdline":	[ "-d", "fujitsu:ScanSnap iX500:9768", "--source", "ADF Duplex", "--page-height", "290", "-y", "290" ],
+	"incoming_dir":	"output/",
+	"thumb_dir": "/tmp/thumbs",
+	"trash_dir": "trash/",
+	"doc_dir": "documents/",
+	"processed_dir": "processed/",
+	"autocomplete_config": "autocomplete.json"
+}

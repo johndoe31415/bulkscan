@@ -1,0 +1,109 @@
+#!/usr/bin/python3
+#	bulkscan - Document scanning and maintenance solution
+#	Copyright (C) 2019-2019 Johannes Bauer
+#
+#	This file is part of bulkscan.
+#
+#	bulkscan is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	bulkscan is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with bulkscan; if not, write to the Free Software
+#	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import os
+import re
+import uuid
+import subprocess
+import json
+import sys
+import doclib
+from FriendlyArgumentParser import FriendlyArgumentParser
+
+parser = FriendlyArgumentParser()
+parser.add_argument("--fix-missing-sideid", action = "store_true", help = "If no side ID (i.e., the side-specific UID) is specified in the JSON payload, add one.")
+parser.add_argument("--fix-missing-sheetid", action = "store_true", help = "If no page ID (i.e., the sheet-specific UID) is specified in the JSON payload, add one and determine front/back from the filename.")
+parser.add_argument("--page-filename-template", metavar = "regex", type = str, default = "bulk_\d+_(?P<id>\d+).png", help = "When fixing page IDs, front and back side must belong to the same batch ID and front/backside is determined according to the scanned page number.")
+parser.add_argument("-d", "--dump", action = "store_true", help = "Just dump the metadata.")
+parser.add_argument("-n", "--dryrun", action = "store_true", help = "Do not actually write anything, just show what would be done.")
+parser.add_argument("-v", "--verbose", action = "store_true", help = "Be verbose about what is performed.")
+parser.add_argument("files", metavar = "filename", type = str, nargs = "+", help = "Filename of the UIDs to edit/fix.")
+args = parser.parse_args(sys.argv[1:])
+
+if args.fix_missing_sheetid:
+	missing_pages = { }
+	regex = re.compile(args.page_filename_template)
+	for filename in args.files:
+		match = regex.fullmatch(os.path.basename(filename))
+		if match:
+			missing_pages[filename] = int(match.groupdict()["id"])
+
+page_uuids = { }
+
+for filename in args.files:
+	mr = doclib.MetaReader(filename)
+	data = mr.read()
+	if args.dump:
+		print("%s" % (filename))
+		print(json.dumps(data, sort_keys = True, indent = 4))
+		print()
+		continue
+
+	new_data = dict(data)
+
+	if args.fix_missing_sideid:
+		if "side_uuid" not in new_data:
+			new_data["side_uuid"] = str(uuid.uuid4())
+	
+	if args.fix_missing_sheetid:
+		if filename in missing_pages:
+			batch_pageno = missing_pages[filename]
+			if "scanned_page_no" not in new_data:
+				new_data["scanned_page_no"] = batch_pageno
+
+			if ("page_uuid" not in new_data) and ("batch_uuid" in new_data):
+				key = (new_data["batch_uuid"], (batch_pageno - 1) // 2)
+				if key not in page_uuids:
+					page_uuids[key] = str(uuid.uuid4())
+				new_data["page_uuid"] = page_uuids[key]
+				new_data["side"] = "front" if ((batch_pageno % 2) == 1) else "back"
+
+	if not args.dryrun:
+		if data == new_data:
+			if args.verbose:
+				print("Unchanged: %s" % (filename))
+		else:
+			if args.verbose:
+				print("Update: %s" % (filename))
+			mr.write(new_data)
+	else:
+		if data == new_data:
+			print("Nothing to do: %s" % (filename))
+		else:
+			print("Proposed change of: %s" % (filename))
+			print("Old data:")
+			print(json.dumps(data, sort_keys = True, indent = 4))
+			print("New data:")
+			print(json.dumps(new_data, sort_keys = True, indent = 4))
+			print()
+
+	
+#	print(filename, data)
+
+
+
+#print(args)
+
+
+
+#filename = sys.argv[1]
+

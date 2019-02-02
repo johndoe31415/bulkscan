@@ -1,0 +1,52 @@
+<div class="heading">
+	<span class="title">Create document (<span id="create_pagecnt"></span> pages)</span>
+</div>
+<div class="body">
+	<div class="container">
+	</div>
+
+	<div id="create_metadata">
+		<form class="pure-form pure-form-aligned">
+			<fieldset>
+				<div class="pure-control-group">
+					<label for="create_doctype">Document Type</label>
+					<select id="create_doctype" name="doctype" class="collect">
+						<option value="rx_letter">Received Letter</option>
+						<option value="tx_letter">Sent Letter</option>
+						<option value="misc">Misc</option>
+					</select>
+				</div>
+				<div class="pure-control-group">
+					<label for="create_peer">Sender/Recipient</label>
+					<input id="create_peer" name="peer" type="text" class="autocomplete collect plausibilize" autocomplete="peer" plausibilize='{ "fnc": "str", "allow_empty": false, "text_selector": "#create_peer_text", "show_formatted": false }' />
+					<span class="pure-form-message-inline" id="create_peer_text"></span>
+				</div>
+				<div class="pure-control-group">
+					<label for="create_docname">Document Name</label>
+					<input id="create_docname" name="docname" type="text" class="autocomplete collect plausibilize" autocomplete="docname" plausibilize='{ "fnc": "str", "allow_empty": false, "text_selector": "#create_docname_text", "show_formatted": false }' />
+					<span class="pure-form-message-inline" id="create_docname_text"></span>
+				</div>
+				<div class="pure-control-group">
+					<label for="create_docdate">Document Date</label>
+					<input id="create_docdate" name="docdate" type="text" class="collect plausibilize" plausibilize='{ "fnc": "date", "text_selector": "#create_docdate_text" }' />
+					<span class="pure-form-message-inline" id="create_docdate_text"></span>
+				</div>
+				<div class="pure-control-group">
+					<label for="create_docmonth">Concerning Date/Month/Year</label>
+					<input id="create_docmonth" name="concerning" type="text" class="collect plausibilize" plausibilize='{ "fnc": "month", "text_selector": "#create_docmonth_text" }' />
+					<span class="pure-form-message-inline" id="create_docmonth_text"></span>
+				</div>
+				<div class="pure-control-group">
+					<label for="create_tags">Tags</label>
+					<input id="create_tags" type="text" />
+					<span class="pure-form-message-inline" id="create_tags_text" name="tags"></span>
+				</div>
+			</fieldset>
+		</form>
+	</div>
+
+	<div id="create_buttons">
+		<button class="pure-button pure-button-primary modal-ok">OK</button>
+		<button class="pure-button modal-cancel">Cancel</button>
+	</div>
+</div>

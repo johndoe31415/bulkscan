@@ -1,0 +1,92 @@
+<!doctype html>
+<!--
+	bulkscan - Document scanning and maintenance solution
+	Copyright (C) 2019-2019 Johannes Bauer
+
+	This file is part of bulkscan.
+
+	bulkscan is free software; you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation; this program is ONLY licensed under
+	version 3 of the License, later versions are explicitly excluded.
+
+	bulkscan is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with bulkscan; if not, write to the Free Software
+	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+	Johannes Bauer <JohannesBauer@gmx.de>
+-->
+<html>
+	<head>
+		<meta charset="utf-8">
+		<script src="/static/js/sprintf.min.js"></script>
+	</head>
+	<body>
+		<pre id="output"></pre>
+		<script type="module">
+			import {parse_date, format_date_german, parse_month, format_month_german} from "/static/mjs/plausibilization.js";
+
+			const out = document.querySelector("#output");
+
+			function test_date(date_str) {
+				const result = parse_date(date_str);
+				out.append(sprintf("%-10s: %s\n", date_str, result ? format_date_german(result) : result));
+			}
+			function test_month(month_str) {
+				const result = parse_month(month_str);
+				out.append(sprintf("%-10s: %s\n", month_str, result ? format_month_german(result) : result));
+			}
+
+			test_date("121314");
+			test_date("321219");
+
+			test_date("121214");
+			test_date("12.3.14");
+			test_date("12.3.2014");
+			test_date("12.02.2014");
+			test_date("311219");
+			test_date("19-12-31");
+			test_date("3.2");
+			test_date("0302");
+			test_date("12-31");
+			test_date("10okt19");
+			test_date("10oct19");
+			test_date("10.oct.19");
+			test_date("10-oct.19");
+			test_date("2.feb-19");
+			test_date("3feb19");
+			test_date("4feb-19");
+			test_date("5-feb-19");
+			test_date("6.feb.2019");
+			test_date("7.feb.2019");
+			test_date("8.feb.2019");
+			test_date("9.feb.2019");
+			test_date("10feb2019");
+			test_date("27feb2019");
+			test_date("28feb2019");
+			test_date("29feb2019");
+			test_date("27feb2020");
+			test_date("28feb2020");
+			test_date("29feb2020");
+			test_date("30feb2020");
+			test_date("27feb2021");
+			test_date("28feb2021");
+			test_date("29feb2021");
+			out.append("-------------------------------\n");
+			test_month("0419");
+			test_month("04.19");
+			test_month("04.2019");
+			test_month("19-04");
+			test_month("2019-04");
+			test_month("apr19");
+			test_month("19apr");
+			test_month("2019apr");
+			test_month("apr2019");
+		</script>
+	</body>
+</html>

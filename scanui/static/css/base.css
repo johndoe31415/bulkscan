@@ -1,0 +1,121 @@
+body {
+	line-height: 1.7em;
+	color: #7f8c8d;
+	font-size: 16px;
+}
+
+.home-menu {
+	padding: 0.5em;
+	text-align: center;
+	box-shadow: 0 1px 1px rgba(0,0,0, 0.10);
+	background: #2d3e50;
+	z-index: 5;
+}
+
+.pure-menu.pure-menu-fixed {
+	border-bottom: none;
+	height: 60px;
+}
+
+.home-menu .pure-menu-heading {
+	color: white;
+	font-weight: 400;
+	font-size: 120%;
+	text-transform: none;
+}
+
+.home-menu .pure-menu-selected a {
+	color: white;
+}
+
+.home-menu a {
+	color: #6fbef3;
+}
+.home-menu li a:hover, .home-menu li a:focus {
+	background: none;
+	border: none;
+	color: #aecfe5;
+}
+
+.home-menu li div a {
+	text-decoration: none;
+}
+
+.home-menu li div a:hover {
+	text-decoration: none;
+	color: #6fbef3;
+}
+
+.shortcut {
+	margin-left: 10px;
+	float: right;
+}
+
+.header {
+}
+
+.content-wrapper {
+	position: relative;
+	margin-top: 70px;
+	background: white;
+}
+
+/* We want to give the content area some more padding */
+.content {
+	padding: 1em 1em 3em;
+}
+
+/* This is the class used for the main content headers (<h2>) */
+.content-head {
+	font-weight: 400;
+	letter-spacing: 0.1em;
+	margin: 2em 0 1em;
+}
+
+/* This is a modifier class used when the content-head is inside a ribbon */
+.content-head-ribbon {
+	color: white;
+}
+
+/* This is the class used for the content sub-headers (<h3>) */
+.content-subhead {
+	color: #1f8dd6;
+}
+.content-subhead i {
+	margin-right: 7px;
+}
+
+/* This is the class used for the dark-background areas. */
+.ribbon {
+	background: #2d3e50;
+	color: #aaa;
+}
+
+.home-menu {
+	text-align: left;
+}
+
+.l-box-lrg {
+	border: none;
+}
+
+table.xy_data td {
+	padding: 3px;
+	border-bottom: 1px #aaa solid;
+}
+
+table.xy_data thead td {
+	border-bottom: 1px #aaa solid;
+	margin-bottom: 5px;
+	font-weight: bold;
+}
+
+table.xy_data tbody tr td:nth-child(1) {
+	margin-right: 5px;
+	font-weight: bold;
+}
+
+table.xy_data td.warn {
+	background-color: #e74c3c;
+	color: #fff;
+}

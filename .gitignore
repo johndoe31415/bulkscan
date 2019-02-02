@@ -1,0 +1,7 @@
+.*.swp
+__pycache__
+*.png
+*.mud
+trash
+output
+autocomplete.json

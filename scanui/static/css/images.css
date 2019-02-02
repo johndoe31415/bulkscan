@@ -1,0 +1,87 @@
+span.tag {
+	background-color: #f1c40f;
+	border-radius: 5px;
+	padding: 5px;
+	color: black;
+	margin-right: 3px;
+	user-select: none;
+}
+
+div.thumbnail_container {
+	user-select: none;
+}
+
+div.selectable_img {
+	position: relative;
+	float: left;
+	background: #999;
+	width: 210px;
+	height: 310px;
+	margin: 5px;
+	padding: 5px;
+	display: flex;
+	justify-content: center;
+	border: 2px #aaa dotted;
+}
+
+div.selectable_img.selected {
+	background: #2ecc71;
+}
+
+div.selectable_img.dragging {
+	opacity: 0.3;
+	background: #f1c40f;
+}
+
+div.selectable_img.dragover {
+	border: 2px #f1c40f solid;
+}
+
+div.selectable_img div.buttons {
+	position: absolute;
+	top: 90%;
+	left: 10px;
+	width: 100%;
+	height: 40px;
+	display: none;
+}
+
+div.selectable_img:hover div.buttons {
+	display: block;
+}
+
+div.buttons.disabled button {
+	color: #aaa;
+	pointer-events: none;
+}
+
+div.selectable_img button {
+	width: 32px;
+	height: 32px;
+	font-size: 1.3em;
+	color: #333;
+}
+
+div.selectable_img img {
+	max-width: max-content;
+	max-height: max-content;
+}
+
+
+div.zoompreview {
+	position: fixed;
+	right: 0px;
+	bottom: 0px;
+	overflow: hidden;
+	width: 600px;
+	height: 600px;
+	z-index: 20;
+}
+
+img.zoompreview {
+	max-width: 800px;
+	max-height: 800px;
+	width: auto;
+	position: relative;
+	z-index: 20;
+}
