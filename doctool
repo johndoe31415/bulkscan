@@ -20,40 +20,91 @@
 #
 #	Johannes Bauer <JohannesBauer@gmx.de>
 
+import os
 import sys
 import doclib
 import json
+import uuid
 import collections
 from FriendlyArgumentParser import FriendlyArgumentParser
 
 parser = FriendlyArgumentParser()
 parser.add_argument("-d", "--dump-data", action = "store_true", help = "Dump data of the document.")
+parser.add_argument("-c", "--check", action = "store_true", help = "Check integrity of MUD documents, such as uniqueness of MUD document UUIDs and presence thereof.")
 parser.add_argument("--extract-autocomplete", action = "store_true", help = "Extract metadata from files and output autocomplete JSON file.")
+parser.add_argument("--fix-missing-doc-uuid", action = "store_true", help = "Fix missing document UUIDs.")
+parser.add_argument("-r", "--recurse", action = "store_true", help = "When given a directory, traverse it recursively and search for *.mud files inside.")
 parser.add_argument("-v", "--verbose", action = "store_true", help = "Be verbose about what is performed.")
 parser.add_argument("files", metavar = "filename", type = str, nargs = "+", help = "Filename of the MUD(s).")
 args = parser.parse_args(sys.argv[1:])
 
-used_tags = set()
-docnames_by_peer = collections.defaultdict(set)
-for filename in args.files:
-	with doclib.MultiDoc(filename) as doc:
-		used_tags |= doc.tags
-		if doc.peer is not None:
-			docnames_by_peer[doc.peer]
-		if (doc.peer is not None) and (doc.docname is not None):
-			docnames_by_peer[doc.peer].add(doc.docname)
-		
-		if args.dump_data:
-			print("%s: %d pages" % (filename, doc.pagecnt))
-			for (key, value) in sorted(doc.get_document_properties().items()):
-				print("    %-8s: %s" % (key, value))
-			if len(doc.tags) > 0:
-				print("    %-8s: %s" % ("tags", ", ".join(sorted(doc.tags))))
-			print()
+class DocChecker(object):
+	def __init__(self, args):
+		self._args = args
+		self._doc_uuids = collections.defaultdict(list)
+		self._used_tags = set()
+		self._docnames_by_peer = collections.defaultdict(set)
+		self._filecnt = 0
 
-if args.extract_autocomplete:
-	autocomplete = {
-		"tag":				sorted(used_tags),
-		"docname_by_peer":	{ key: sorted(value) for (key, value) in docnames_by_peer.items() },
-	}
-	print(json.dumps(autocomplete, sort_keys = True, indent = 4))
+	def process_file(self, filename):
+		self._filecnt += 1
+		with doclib.MultiDoc(filename) as doc:
+			self._used_tags |= doc.tags
+			if doc.peer is not None:
+				self._docnames_by_peer[doc.peer]
+			if (doc.peer is not None) and (doc.docname is not None):
+				self._docnames_by_peer[doc.peer].add(doc.docname)
+
+			doc_uuid = doc.get_document_property("doc_uuid")
+			if (doc_uuid is None) and (self._args.fix_missing_doc_uuid):
+				doc_uuid = str(uuid.uuid4())
+				doc.set_document_property("doc_uuid", doc_uuid)
+			if doc_uuid is not None:
+				self._doc_uuids[doc_uuid].append(filename)
+
+			if self._args.check and (doc_uuid is None):
+				print("Warning: Integrity error in %s, no doc_uuid document property found." % (filename), file = sys.stderr)
+
+			if self._args.dump_data:
+				print("%s: %d pages" % (filename, doc.pagecnt))
+				for (key, value) in sorted(doc.get_document_properties().items()):
+					print("    %-8s: %s" % (key, value))
+				if len(doc.tags) > 0:
+					print("    %-8s: %s" % ("tags", ", ".join(sorted(doc.tags))))
+				print()
+
+	def process_dir(self, start_dir):
+		for (basedir, subdirs, files) in os.walk(start_dir):
+			if not basedir.endswith("/"):
+				basedir += "/"
+			for filename in files:
+				if filename.endswith(".mud"):
+					full_filename = basedir + filename
+					self.process_file(full_filename)
+
+	def _post_analysis(self):
+		if self._args.extract_autocomplete:
+			autocomplete = {
+				"tag":				sorted(self._used_tags),
+				"docname_by_peer":	{ key: sorted(value) for (key, value) in self._docnames_by_peer.items() },
+			}
+			print(json.dumps(autocomplete, sort_keys = True, indent = 4))
+
+		if self._args.check:
+			for (doc_uuid, filenames) in self._doc_uuids.items():
+				if len(filenames) > 1:
+					print("Warning: Document UUID %s used by %d files: %s" % (doc_uuid, len(filenames), " / ".join(sorted(filenames))), file = sys.stderr)
+
+		if self._args.verbose:
+			print("%d documents analyzed." % (self._filecnt), file = sys.stderr)
+
+	def run(self):
+		for filename in self._args.files:
+			if os.path.isdir(filename) and self._args.recurse:
+				self.process_dir(filename)
+			else:
+				self.process_file(filename)
+		self._post_analysis()
+
+doccheck = DocChecker(args)
+doccheck.run()
