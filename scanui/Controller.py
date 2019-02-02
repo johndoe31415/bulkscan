@@ -23,6 +23,7 @@ import os
 import time
 import re
 import json
+import uuid
 import subprocess
 import contextlib
 import tempfile
@@ -151,6 +152,7 @@ class Controller():
 					if attribute in meta:
 						doc.set_side_property(side_uuid, attribute, str(meta[attribute]))
 
+			doc.set_document_property("doc_uuid", str(uuid.uuid4()))
 			doc.set_document_property("created_utc", datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"))
 			for (key, value) in attributes.items():
 				doc.set_document_property(key, value)
