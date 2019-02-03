@@ -77,6 +77,10 @@ def document_create():
 	indata = request.json
 	return jsonify(ctrlr.create_document(indata["files"], indata["tags"], indata["attrs"]))
 
+@app.route("/document")
+def document_list():
+	return jsonify(ctrlr.list_documents())
+
 @app.route("/debug")
 def debug():
 	return jsonify(dbg.get())
@@ -85,3 +89,4 @@ def debug():
 def debug_long():
 	dbg.long()
 	return "OK\n"
+

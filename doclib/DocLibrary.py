@@ -23,6 +23,10 @@ import os
 import uuid
 from doclib import MultiDoc
 
+class DocumentException(Exception): pass
+class DuplicateDocumentException(DocumentException): pass
+class DocumentWithoutUUIDException(DocumentException): pass
+
 class DocEntry():
 	def __init__(self, mudfile):
 		self._stats = {
@@ -43,6 +47,10 @@ class DocEntry():
 	def mudfile_mtime(self):
 		return os.stat(self.filename).st_mtime
 
+	@property
+	def metadata(self):
+		return self._stats["data"]
+
 	def _get_stats(self):
 		stats = { }
 		with MultiDoc(self.filename) as doc:
@@ -52,17 +60,35 @@ class DocEntry():
 		return stats
 
 class DocLibrary():
-	def __init__(self, cachefile):
-		pass
+	def __init__(self, cachefile = None):
+		self._cachefile = cachefile
+		self._documents = { }
+
+	@property
+	def doc_dict(self):
+		return self._documents
 
 	def add_document(self, filename):
-		print(DocEntry(filename))
-		pass
+		entry = DocEntry(filename)
+		if entry.doc_uuid is None:
+			raise DocumentWithoutUUIDException("%s: no document UUID present" % (filename))
+		if entry.doc_uuid in self._documents:
+			raise DuplicateDocumentException("%s: %s already present in library as %s" % (entry.doc_uuid, filename, self._documents[entry.doc_uuid].filename))
+		self._documents[entry.doc_uuid] = entry
+		return entry
 
-	def add_directory(self, dirname):
+	def add_directory(self, dirname, errors = "ignore"):
+		assert(errors in [ "ignore", "throw" ])
 		if not dirname.endswith("/"):
 			dirname += "/"
 		for filename in os.listdir(dirname):
 			if filename.endswith(".mud"):
 				full_filename = dirname + filename
-				self.add_document(full_filename)
+				try:
+					self.add_document(full_filename)
+				except DocumentException:
+					if errors == "throw":
+						raise
+
+	def __iter__(self):
+		return iter(self._documents.items())

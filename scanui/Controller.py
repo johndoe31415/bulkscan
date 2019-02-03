@@ -38,6 +38,7 @@ class Controller():
 		self._config = None
 		self._basedir = os.path.dirname(__file__)
 		self._acdb = None
+		self._doclib = doclib.DocLibrary()
 
 	def _late_init(self):
 		# Now config is available
@@ -50,6 +51,7 @@ class Controller():
 		with contextlib.suppress(FileExistsError):
 			os.makedirs(self._config["processed_dir"])
 		self._acdb = AutocompleteDB(self._config["autocomplete_config"])
+		self._doclib.add_directory(self._config["doc_dir"])
 
 	@property
 	def config(self):
@@ -161,3 +163,6 @@ class Controller():
 		for filename in filenames:
 			self._move_file(self._config["incoming_dir"] + "/" + filename, self._config["processed_dir"])
 		return { "success": True }
+
+	def list_documents(self):
+		return { doc_uuid: doc_entry.metadata for (doc_uuid, doc_entry) in self._doclib }

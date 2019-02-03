@@ -1,0 +1,106 @@
+<!doctype html>
+<!--
+	bulkscan - Document scanning and maintenance solution
+	Copyright (C) 2019-2019 Johannes Bauer
+
+	This file is part of bulkscan.
+
+	bulkscan is free software; you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation; this program is ONLY licensed under
+	version 3 of the License, later versions are explicitly excluded.
+
+	bulkscan is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with bulkscan; if not, write to the Free Software
+	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+	Johannes Bauer <JohannesBauer@gmx.de>
+-->
+<html>
+	<head>
+		<link rel="stylesheet" href="/static/css/pure-min.css" />
+		<link rel="stylesheet" href="/static/css/base.css" />
+		<link rel="stylesheet" href="/static/css/images.css" />
+		<link rel="stylesheet" href="/static/css/auto-complete.css" />
+		<link rel="stylesheet" href="/static/css/modal.css" />
+		<script language="JavaScript" src="/static/js/auto-complete.min.js"></script>
+		<script language="JavaScript" src="/static/js/sprintf.min.js"></script>
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+	</head>
+	<body>
+
+		<div id="content" style="display: none">
+			<div class="home-menu pure-menu pure-menu-horizontal pure-menu-fixed">
+				<ul class="pure-menu-list">
+					<li class="pure-menu-item pure-menu-has-children pure-menu-allow-hover">
+						<a href="#" id="menuLink1" class="pure-menu-link">Site</a>
+						<ul class="pure-menu-children">
+							<li class="pure-menu-item"><div class="pure-menu-link"><a href="/static/html/incoming.html">New scans</a></div></li>
+							<li class="pure-menu-item"><div class="pure-menu-link"><a href="/static/html/archive.html">Archive</a></div></li>
+						</ul>
+					</li>
+					<li class="pure-menu-item pure-menu-has-children pure-menu-allow-hover">
+						<a href="#" id="menuLink1" class="pure-menu-link">Actions</a>
+						<ul class="pure-menu-children">
+							<li class="pure-menu-item"><div class="pure-menu-link"><a href="#" class="actionlink" action="load_all_thumbnails">Load all thumbnails</a></div></li>
+							<li class="pure-menu-item"><div class="pure-menu-link"><a href="#" class="actionlink" action="delete_selected_images">Delete</a><span class="shortcut">Del</span></div></li>
+							<li class="pure-menu-item"><div class="pure-menu-link"><a href="#" class="actionlink" action="deselect_selected_images">Deselect all</a><span class="shortcut">Ctrl-X</span></div></li>
+							<li class="pure-menu-item"><div class="pure-menu-link"><a href="#" class="actionlink" action="create_document">Create document</a><span class="shortcut">Ctrl-Y</span></div></li>
+						</ul>
+					</li>
+				</ul>
+			</div>
+
+			<div class="content-wrapper" id="showarea">
+				<div class="filters">
+					<form class="pure-form pure-form-aligned">
+						<fieldset>
+							<div class="pure-control-group">
+								<label for="create_doctype">Document Type</label>
+								<select name="doctype">
+									<option value="*">Any</option>
+									<option value="rx_letter">Received Letter</option>
+									<option value="tx_letter">Sent Letter</option>
+									<option value="misc">Misc</option>
+								</select>
+							</div>
+							<div class="pure-control-group">
+								<label for="create_peer">Peer</label>
+								<input id="create_peer" name="peer" type="text" />
+							</div>
+							<div class="pure-control-group">
+								<label for="create_peer">Name</label>
+								<input id="create_peer" name="peer" type="text" />
+							</div>
+						</fieldset>
+					</form>
+				</div>
+
+				<table id="document_table" class="pure-table">
+					<thead>
+						<tr>
+							<th name="doctype">Type</th>
+							<th name="peer">Peer</th>
+							<th name="docname">Name</th>
+							<th name="docdate">Date</th>
+							<th name="tags">Tags</th>
+							<th name="pagecnt">Pages</th>
+							<th name="view">View</th>
+							<th name="thumbnails">Thumbnails</th>
+						</tr>
+					</thead>
+					<tbody>
+
+					</tbody>
+				</table>
+			</div>
+		</div>
+
+		<script language="JavaScript" type="module" src="/static/mjs/main_archive.js"></script>
+	</body>
+</html>
