@@ -21,3 +21,4 @@
 
 from .MultiDoc import MultiDoc
 from .MetaReader import MetaReader, MetaReaderException
+from .DocLibrary import DocLibrary

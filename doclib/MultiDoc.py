@@ -167,6 +167,19 @@ class MultiDoc(object):
 
 		return side_uuid
 
+	def get_page_order(self):
+		return self._cursor.execute("SELECT orderno FROM image_original ORDER BY orderno ASC;").fetchall()
+
+	def get_page_properties(self, orderno):
+		return { key: value for (key, value) in self._cursor.execute("""
+			SELECT key, value FROM image_meta
+				LEFT JOIN image_original ON image_original.side_uuid = image_meta.side_uuid
+				WHERE orderno = ?;
+			""", (orderno)).fetchall() }
+
+	def get_all_page_properties(self):
+		return [ self.get_page_properties(orderno) for orderno in self.get_page_order() ]
+
 	def set_document_property(self, key, value):
 		count = self._cursor.execute("SELECT COUNT(*) FROM document_meta WHERE key = ?;", (key, )).fetchone()[0]
 		if count == 0:
