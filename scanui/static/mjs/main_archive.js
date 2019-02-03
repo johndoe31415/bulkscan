@@ -25,7 +25,7 @@ import {PageThumbnails} from "/static/mjs/pagethumbnail.js";
 import {PreviewModal} from "/static/mjs/modal_preview.js";
 import {CreateDocumentModal} from "/static/mjs/modal_create_document.js";
 import {DocumentTable} from "/static/mjs/documenttable.js";
-import {Document} from "/static/mjs/document.js";
+import {Document, DocumentFilter} from "/static/mjs/document.js";
 
 const elem_content = document.querySelector("#content");
 const elem_showarea = document.querySelector("#showarea");
@@ -63,6 +63,27 @@ document.querySelectorAll(".actionlink").forEach(function(link) {
 	}
 });
 
+function build_filter() {
+	const filter = new DocumentFilter();
+	document.querySelectorAll(".filter-input").forEach(function(element) {
+		if (element.value != "") {
+			filter.add_cond((doc) => doc.properties[element.name] == element.value);
+		}
+	});
+	document.querySelectorAll(".filter-input-subexpr").forEach(function(element) {
+		if (element.value != "") {
+			filter.add_cond((doc) => doc.properties[element.name].toLowerCase().indexOf(element.value.toLowerCase()) >= 0);
+		}
+	});
+	return filter;
+}
+
+function rebuild_filter() {
+	if (documenttable) {
+		documenttable.filter = build_filter();
+	}
+}
+
 fetch("/document").then(function(response) {
 	if (response.status == 200) {
 		return response.json();
@@ -74,6 +95,11 @@ fetch("/document").then(function(response) {
 		documents.push(doc);
 	}
 	documenttable = new DocumentTable(documents, document.querySelector("#document_table"));
+	documenttable.filter = build_filter();
 	documenttable.populate();
 	elem_content.style.display = "";
+});
+
+document.querySelectorAll(".filter-update").forEach(function(element) {
+	element.addEventListener("input", rebuild_filter, false);
 });

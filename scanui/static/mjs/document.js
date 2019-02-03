@@ -22,6 +22,24 @@
 */
 
 export class DocumentFilter {
+	constructor() {
+		this._conditions = [ ];
+	}
+
+	add_cond(cond) {
+		this._conditions.push(cond);
+	}
+
+	check(doc) {
+		let pass = true;
+		for (const cond of this._conditions) {
+			pass = pass && cond(doc);
+			if (!pass) {
+				break;
+			}
+		}
+		return pass;
+	}
 }
 
 export class Document {
@@ -43,6 +61,9 @@ export class Document {
 	}
 
 	fulfills(document_filter) {
-		return true;
+		if (document_filter == null) {
+			return true;
+		}
+		return document_filter.check(this);
 	}
 }

@@ -28,6 +28,7 @@
 		<link rel="stylesheet" href="/static/css/images.css" />
 		<link rel="stylesheet" href="/static/css/auto-complete.css" />
 		<link rel="stylesheet" href="/static/css/modal.css" />
+		<link rel="stylesheet" href="/static/css/archive.css" />
 		<script language="JavaScript" src="/static/js/auto-complete.min.js"></script>
 		<script language="JavaScript" src="/static/js/sprintf.min.js"></script>
 		<meta name="viewport" content="width=device-width, initial-scale=1">
@@ -61,27 +62,27 @@
 					<form class="pure-form pure-form-aligned">
 						<fieldset>
 							<div class="pure-control-group">
-								<label for="create_doctype">Document Type</label>
-								<select name="doctype">
-									<option value="*">Any</option>
+								<label for="filter_doctype">Document Type</label>
+								<select name="doctype" class="filter-update filter-input">
+									<option value="">Any</option>
 									<option value="rx_letter">Received Letter</option>
 									<option value="tx_letter">Sent Letter</option>
 									<option value="misc">Misc</option>
 								</select>
 							</div>
 							<div class="pure-control-group">
-								<label for="create_peer">Peer</label>
-								<input id="create_peer" name="peer" type="text" />
+								<label for="filter_peer">Peer</label>
+								<input id="filter_peer" class="filter-update filter-input-subexpr" name="peer" type="text" />
 							</div>
 							<div class="pure-control-group">
-								<label for="create_peer">Name</label>
-								<input id="create_peer" name="peer" type="text" />
+								<label for="filter_docname">Name</label>
+								<input id="filter_docname" class="filter-update filter-input-subexpr" name="docname" type="text" />
 							</div>
 						</fieldset>
 					</form>
 				</div>
 
-				<table id="document_table" class="pure-table">
+				<table id="document_table" class="pure-table pure-table-horizontal">
 					<thead>
 						<tr>
 							<th name="doctype">Type</th>

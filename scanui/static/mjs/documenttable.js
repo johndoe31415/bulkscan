@@ -25,6 +25,32 @@ export class DocumentTable {
 	constructor(documents, table) {
 		this._documents = documents;
 		this._table = table;
+		this._filter = null;
+	}
+
+	get filter() {
+		return this._filter;
+	}
+
+	set filter(new_filter) {
+		this._filter = new_filter;
+		this._reapply_filter();
+	}
+
+	_reapply_filter() {
+		const tbody = this._table.querySelector("tbody");
+		if (tbody == null) {
+			return;
+		}
+		const doctable = this;
+		tbody.querySelectorAll("tr").forEach(function(row) {
+			const visible = row.doc.fulfills(doctable._filter);
+			if (visible) {
+				row.classList.remove("hidden");
+			} else {
+				row.classList.add("hidden");
+			}
+		});
 	}
 
 	_render_cell(doc, data_type) {
@@ -50,15 +76,17 @@ export class DocumentTable {
 		const thead = this._table.querySelectorAll("thead th").forEach(function(cell) {
 			data_types.push(cell.getAttribute("name"));
 		});
-		const tbody = document.createDocumentFragment();
 
+		const tbody = document.createDocumentFragment();
 		for (const doc of this._documents) {
 			const row = document.createElement("tr");
 			for (const data_type of data_types) {
 				row.append(this._render_cell(doc, data_type));
 			}
+			row.doc = doc;
 			tbody.append(row);
 		}
+		this._reapply_filter();
 
 		const doc_tbody = this._table.querySelector("tbody");
 		doc_tbody.innerHTML = "";

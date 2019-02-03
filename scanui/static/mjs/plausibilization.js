@@ -360,5 +360,5 @@ export function register_plausibilization(input_element, base_node) {
 	}
 	input_element.plausibilizer = plausibilizer;
 	input_element.plausibilize = plausibilize;
-	input_element.oninput = event_plausibilize;
+	input_element.addEventListener(input, event_plausibilize, false);
 }
