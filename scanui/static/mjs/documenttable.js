@@ -71,10 +71,26 @@ export class DocumentTable {
 		return cell;
 	}
 
+	_repopulate_table() {
+		const tbody = this._documents[0].row.parentElement;
+		for (const doc of this._documents) {
+			tbody.append(doc.row);
+		}
+	}
+
+	_on_click_head(event) {
+		console.log(event.target);
+//		this._documents.sort();
+		this._documents[1] = this._documents[3];
+		this._repopulate_table();
+	}
+
 	populate() {
+		const documenttable = this;
 		let data_types = [ ];
 		const thead = this._table.querySelectorAll("thead th").forEach(function(cell) {
 			data_types.push(cell.getAttribute("name"));
+			cell.addEventListener("click", (event) => documenttable._on_click_head(event));
 		});
 
 		const tbody = document.createDocumentFragment();
@@ -84,6 +100,7 @@ export class DocumentTable {
 				row.append(this._render_cell(doc, data_type));
 			}
 			row.doc = doc;
+			doc.row = row;
 			tbody.append(row);
 		}
 		this._reapply_filter();
