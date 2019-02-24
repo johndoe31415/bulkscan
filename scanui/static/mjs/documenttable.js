@@ -26,6 +26,8 @@ export class DocumentTable {
 		this._documents = documents;
 		this._table = table;
 		this._filter = null;
+		this._sorted_by = null;
+		this._invert_sort = false;
 	}
 
 	get filter() {
@@ -72,17 +74,43 @@ export class DocumentTable {
 	}
 
 	_repopulate_table() {
+		/* TODO avoid reflow by creating fragment? */
 		const tbody = this._documents[0].row.parentElement;
 		for (const doc of this._documents) {
 			tbody.append(doc.row);
 		}
 	}
 
+	_mark_sorting_table_head() {
+
+	}
+
+	_sort_table_by(key) {
+		const known_sort_functions = {
+			docname:	(doc1, doc2) => doc1.properties.docname.localeCompare(doc2.properties.docname),
+			peer:		(doc1, doc2) => doc1.properties.peer.localeCompare(doc2.properties.peer),
+			docdate:	(doc1, doc2) => -doc1.properties.docdate.localeCompare(doc2.properties.docdate),
+		};
+
+		if (key in known_sort_functions) {
+			const base_sort_function = known_sort_functions[key];
+			if (key == this._sort_function) {
+				this._invert_sort = !this._invert_sort;
+			} else {
+				this._invert_sort = false;
+			}
+			this._sort_function = key;
+			this._mark_table_head();
+
+			let sort_function = this._invert_sort ? (doc1, doc2) => -base_sort_function(doc1, doc2) : base_sort_function;
+			this._documents.sort(sort_function);
+			this._repopulate_table();
+		}
+	}
+
 	_on_click_head(event) {
-		console.log(event.target);
-//		this._documents.sort();
-		this._documents[1] = this._documents[3];
-		this._repopulate_table();
+		const th_name = event.target.getAttribute("name");
+		this._sort_table_by(th_name);
 	}
 
 	populate() {
