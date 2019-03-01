@@ -22,3 +22,4 @@
 from .MultiDoc import MultiDoc
 from .MetaReader import MetaReader, MetaReaderException
 from .DocLibrary import DocLibrary
+from .PDFCreate import PDFCreate, PDFImageFormatter, PDFImage
