@@ -24,53 +24,14 @@ import textwrap
 import subprocess
 import zlib
 import enum
+from .NamedVector import NamedVector
+
+class UnsupportedError(Exception): pass
 
 class PixelFormat(enum.IntEnum):
 	BlackWhite = 0
 	Grayscale = 1
 	RGB = 2
-
-class NamedVector(object):
-	_COMPONENTS = None
-
-	def __init__(self, *values, **kwargs):
-		if (len(values) == len(self._COMPONENTS)) and (len(kwargs) == 0):
-			self._values = tuple(values)
-		elif (len(kwargs) == len(self._COMPONENTS)) and (len(values) == 0):
-			self._values = tuple(kwargs[key] for key in self._COMPONENTS)
-		else:
-			if (len(values) > 0) and (len(kwargs) > 0):
-				raise Exception("Can only specify args or kwargs, not mix the two")
-			else:
-				raise Exception("Agument count mismatch (expected %d)." % (len(self._COMPONENTS)))
-
-	def __getattr__(self, key):
-		return self._values[self._COMPONENTS.index(key)]
-
-	def __iter__(self):
-		return iter(self._values)
-
-	def __add__(self, other):
-		return self.__class__(*((x + y) for (x, y) in zip(self, other)))
-
-	def __mul__(self, scalar):
-		return self.__class__(*((x * scalar) for x in self))
-
-	def __truediv__(self, dividend):
-		return self * (1 / dividend)
-
-	def __sub__(self, other):
-		return self + (-other)
-
-	def __neg__(self):
-		return self.__class__(*(-x for x in self))
-
-	def __len__(self):
-		return len(self._values)
-
-	def __str__(self):
-		return "%s<%s>" % (self.__class__.__name__, ", ".join("%.3f" % (x) for x in self))
-
 
 class Dimensions(NamedVector):
 	_COMPONENTS = [ "width", "height" ]
@@ -127,7 +88,7 @@ class PDFImage(object):
 			cmd += [ "-set", "colorspace", "gray", "-depth", "8", "-type", "grayscale" ]
 		elif pixel_format == PixelFormat.BlackWhite:
 			if image_format == "JPEG":
-				raise Exception("JPEG does not support Black/White")
+				raise UnsupportedError("JPEG does not support Black/White pixel format.")
 			cmd += [ "-set", "colorspace", "gray", "-type", "bilevel", "-depth", "1" ]
 		else:
 			raise NotImplementedError(pixel_format)
@@ -203,12 +164,6 @@ class PDFCreate(object):
 	def printable_area_mm(self):
 		return self._printable_area
 
-	@staticmethod
-	def _pdf_pixel_compression(width, bilevel_data):
-		"""Convert 1-bit per pixel/byte to 1 bit per pixel, but 8 bit per byte."""
-		print(bilevel_data[:10].hex())
-		return bilevel_data
-
 	def add_image(self, pdfimage, pixel_format = None, max_resolution_dpi = None, lossless = False):
 		if pixel_format is None:
 			pixel_format = pdfimage.pixel_format
@@ -239,23 +194,7 @@ class PDFCreate(object):
 			image.stream = pdfrw.py23_diffs.convert_load(pdfimage.data)
 		elif pdfimage.image_format in [ "RGB", "GRAY" ]:
 			image[pdfrw.PdfName.Filter] = pdfrw.PdfName.FlateDecode
-			if pdfimage.pixel_format != PixelFormat.BlackWhite:
-				image.stream = pdfrw.py23_diffs.convert_load(zlib.compress(pdfimage.data))
-			else:
-				x = bytearray(pdfimage.data)
-				print(pdfimage.data[:60].hex())
-				def bito(x):
-					y = 0
-					for i in range(8):
-						if x & (1 << i):
-							y |= (1 << (7 - i))
-					return y
-				for i in range(60):
-					x[i] = bito(x[i])
-
-
-				image.stream = pdfrw.py23_diffs.convert_load(zlib.compress(self._pdf_pixel_compression(pdfimage.dimensions.width, x)))
-				#image.stream = pdfrw.py23_diffs.convert_load(zlib.compress(self._pdf_pixel_compression(pdfimage.dimensions.width, pdfimage.data)))
+			image.stream = pdfrw.py23_diffs.convert_load(zlib.compress(pdfimage.data))
 		else:
 			raise NotImplementedError(pdfimage.image_format)
 
