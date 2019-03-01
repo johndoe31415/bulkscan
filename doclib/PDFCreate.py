@@ -169,10 +169,12 @@ class PDFImage(object):
 		return "PDFImage<%d bytes, %s, %s, %d x %dpx / %.1f x %.1fmm>" % (len(self._data), self.image_format, self.pixel_format, self.dimensions.width, self.dimensions.height, self.extents_mm.width, self.extents_mm.height)
 
 class PDFCreate(object):
-	def __init__(self, filename, dimensions_mm = Dimensions(width = 210, height = 297), margin_mm = Margin(0, 0, 0, 0)):
+	def __init__(self, filename, dimensions_mm = Dimensions(width = 210, height = 297), margin_mm = Margin(0, 0, 0, 0), author = None, title = None):
 		self._writer = pdfrw.PdfWriter(filename)
 		self._dimensions = dimensions_mm
 		self._margin = margin_mm
+		self._author = author
+		self._title = title
 		self._printable_area = Dimensions(width = self._dimensions.width - self._margin.left - self._margin.right, height = self._dimensions.height - self._margin.top - self._margin.bottom)
 		assert(self.printable_area_mm.width > 0)
 		assert(self.printable_area_mm.height > 0)
@@ -314,7 +316,7 @@ class PDFImageFormatter(object):
 
 if __name__ == "__main__":
 	formatter = PDFImageFormatter.midlevel_color()
-	with PDFCreate("out.pdf") as pdf:
+	with PDFCreate("out.pdf", author = "Föö Bär", title = "Ze Title") as pdf:
 #		pdf.add_image(PDFImage.from_file("test.png"), lossless = False, max_resolution_dpi = 150)
 #		pdf.add_image(PDFImage.from_file("guitar.jpg"), lossless = False, max_resolution_dpi = 150)
 		pdf.add_image(formatter.reformat(PDFImage.from_file("test.png")))
