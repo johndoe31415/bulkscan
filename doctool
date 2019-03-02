@@ -26,6 +26,7 @@ import doclib
 import json
 import uuid
 import collections
+import llpdf
 from FriendlyArgumentParser import FriendlyArgumentParser
 
 parser = FriendlyArgumentParser()
@@ -34,9 +35,11 @@ parser.add_argument("-c", "--check", action = "store_true", help = "Check integr
 parser.add_argument("--extract-autocomplete", action = "store_true", help = "Extract metadata from files and output autocomplete JSON file.")
 parser.add_argument("--fix-missing-doc-uuid", action = "store_true", help = "Fix missing document UUIDs.")
 parser.add_argument("-p", "--create-pdf", action = "store_true", help = "Create a PDF file from the input document.")
-parser.add_argument("--pdf-filename", metavar = "filename", type = str, help = "When createing a PDF file, gives the output PDF filename. By default, this is the name of the input file with a \".pdf\" extension.")
-parser.add_argument("--pdf-profile", choices = [ "low-bw", "mid-gray", "mid-color", "high-color" ], default = "mid-gray", help = "When createing a PDF file, gives the quality of the created PDF file. Can be any of %(choices)s, defaults to %(default)s.")
+parser.add_argument("--pdf-filename", metavar = "filename", type = str, help = "When creating a PDF file, gives the output PDF filename. By default, this is the name of the input file with a \".pdf\" extension.")
+parser.add_argument("--pdf-profile", choices = [ "low-bw", "mid-gray", "mid-color", "high-color" ], default = "mid-gray", help = "When creating a PDF file, gives the quality of the created PDF file. Can be any of %(choices)s, defaults to %(default)s.")
+parser.add_argument("--pdf-original-imgs", action = "store_true", help = "When creating a PDF file, only ever uses original sources, never enhanced images.")
 parser.add_argument("-r", "--recurse", action = "store_true", help = "When given a directory, traverse it recursively and search for *.mud files inside.")
+parser.add_argument("-f", "--force", action = "store_true", help = "Force overwriting of output documents if they exist already.")
 parser.add_argument("-v", "--verbose", action = "store_true", help = "Be verbose about what is performed.")
 parser.add_argument("files", metavar = "filename", type = str, nargs = "+", help = "Filename of the MUD(s).")
 args = parser.parse_args(sys.argv[1:])
@@ -50,20 +53,27 @@ class DocChecker(object):
 		self._filecnt = 0
 
 	def _create_pdf(self, doc, pdf_filename):
-		if os.path.isfile(pdf_filename):
-			# TODO force?
+		if (not self._args.force) and os.path.isfile(pdf_filename):
+			print("Not overwriting: %s" % (pdf_filename), file = sys.stderr)
 			return
 
 		formatter = {
-			"high-color":	doclib.PDFImageFormatter.highlevel_color(),
-			"mid-color":	doclib.PDFImageFormatter.midlevel_color(),
-			"mid-gray":		doclib.PDFImageFormatter.midlevel_gray(),
-			"low-bw":		doclib.PDFImageFormatter.lowlevel_bw(),
+			"high-color":	llpdf.PDFImageFormatter.highlevel_color(),
+			"mid-color":	llpdf.PDFImageFormatter.midlevel_color(),
+			"mid-gray":		llpdf.PDFImageFormatter.midlevel_gray(),
+			"low-bw":		llpdf.PDFImageFormatter.lowlevel_bw(),
 		}[args.pdf_profile]
-		with doclib.PDFCreate(pdf_filename) as pdf:
-			for side_uuid in doc.get_page_order():
-				data = doc.get_page_image(side_uuid)
-				pdf.add_page(formatter.reformat(doclib.PDFImage.from_data(data)))
+
+		pdf_writer = llpdf.PDFWriter()
+		pdf = llpdf.PDFDocument()
+		hlpdf = llpdf.HighlevelPDFFunctions(pdf)
+		hlpdf.initialize_pages(title = doc.docname, author = doc.peer)
+		for side_uuid in doc.get_page_order():
+			image_data = doc.get_page_image(side_uuid, allow_enhanced = not self._args.pdf_original_imgs)
+			image = llpdf.PDFExtImage.from_data(image_data)
+			image = formatter.reformat(image)
+			llpdf.HighlevelPDFImageFunctions(hlpdf.new_page()).put_image(image)
+		pdf_writer.write(pdf, pdf_filename)
 
 	def process_file(self, filename):
 		self._filecnt += 1
