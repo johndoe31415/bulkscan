@@ -81,22 +81,32 @@ class Controller():
 			shutil.move(outfile.name, input_filename)
 			self.remove_thumb(filename)
 
-	def _find_filename(self, filename):
+	@staticmethod
+	def _sanitize_filename(filename):
+		filename = filename.replace("/", " ")
+		filename = filename.replace("\"", " ")
+		filename = filename.replace("'", " ")
+		filename = filename.replace("&", "+")
+		filename = re.sub(r"\s+", "_", filename)
+		return filename
+
+	def _find_filename(self, dirname, filename):
 		for i in range(1000):
 			if i == 0:
-				result_filename = filename
+				result_filename = self._sanitize_filename(filename)
 			else:
 				(prefix, extension) = os.path.splitext(filename)
-				result_filename = prefix + "_%03d" % (i) + extension
-			if not os.path.exists(result_filename):
-				return result_filename
+				result_filename = self._sanitize_filename(prefix + "_%03d" % (i) + extension)
+			full_filename = dirname + "/" + result_filename
+			if not os.path.exists(full_filename):
+				return full_filename
 		return None
 
 	def _delete_file(self, src_filename):
 		return self._move_file(src_filename, self._config["trash_dir"])
 
 	def _move_file(self, src_filename, target_dir):
-		dst_filename = self._find_filename(target_dir + "/" + os.path.basename(src_filename))
+		dst_filename = self._find_filename(target_dir, os.path.basename(src_filename))
 		if dst_filename is not None:
 			os.rename(src_filename, dst_filename)
 		return dst_filename is not None
@@ -140,7 +150,7 @@ class Controller():
 		self.acdb.put_tags(tags)
 		self.acdb.write()
 
-		output_doc = self._find_filename(self._config["doc_dir"] + "/" + "-".join(fn_elements) + ".mud")
+		output_doc = self._find_filename(self._config["doc_dir"], "-".join(fn_elements) + ".mud")
 		with doclib.MultiDoc(output_doc) as doc:
 			for filename in filenames:
 				full_filename = self._config["incoming_dir"] + "/" + filename
@@ -148,7 +158,7 @@ class Controller():
 					meta = doclib.MetaReader(full_filename).read()
 				except doclib.MetaReaderException:
 					meta = { }
-				side_uuid = doc.add(full_filename, "png", side_uuid = meta.get("side_uuid"), sheet_uuid = meta.get("page_uuid"), sheet_side = meta.get("side", "front"))
+				side_uuid = doc.add(full_filename, side_uuid = meta.get("side_uuid"), sheet_uuid = meta.get("page_uuid"), sheet_side = meta.get("side", "front"))
 				doc.set_side_property(side_uuid, "orig_filename", filename)
 				for attribute in [ "batch_uuid", "created_utc", "scanned_page_no" ]:
 					if attribute in meta:

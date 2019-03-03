@@ -314,6 +314,7 @@ export function register_plausibilization(input_element, base_node) {
 
 	const plausibilization_function = known_functions[params["fnc"]];
 	const text_field = ("text_selector" in params) ? (base_node ? base_node : document).querySelector(params["text_selector"]) : null;
+
 	function plausibilizer() {
 		const current_value = input_element.value;
 		const current_parsed_value = plausibilization_function["parse"](current_value);
@@ -332,6 +333,7 @@ export function register_plausibilization(input_element, base_node) {
 		};
 		return result;
 	}
+
 	function plausibilize() {
 		const result = plausibilizer();
 		if (result.ok) {
@@ -355,10 +357,12 @@ export function register_plausibilization(input_element, base_node) {
 		}
 		return result;
 	}
+
 	function event_plausibilize() {
 		plausibilize();
 	}
+
 	input_element.plausibilizer = plausibilizer;
 	input_element.plausibilize = plausibilize;
-	input_element.addEventListener(input, event_plausibilize, false);
+	input_element.addEventListener("input", event_plausibilize, false);
 }

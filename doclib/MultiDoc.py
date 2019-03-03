@@ -19,6 +19,7 @@
 #
 #	Johannes Bauer <JohannesBauer@gmx.de>
 
+import os
 import sqlite3
 import contextlib
 import textwrap
@@ -29,9 +30,12 @@ import collections
 import contextlib
 
 class MultiDoc(object):
-	_ImageInfo = collections.namedtuple("ImageInfo", [ "width", "height", "resolution_dpi" ])
+	_ImageCollection = collections.namedtuple("ImageCollection", [ "original", "enhanced", "thumbs" ])
+	_ImageInfo = collections.namedtuple("ImageInfo", [ "datatype", "width", "height", "resolution_dpi" ])
+	_DerivativeInfo = collections.namedtuple("DerivativeInfo", [ "derivative_id", "image_info" ])
 	def __init__(self, filename):
 		self._filename = filename
+		print(self._filename)
 		self._conn = sqlite3.connect(filename)
 		self._cursor = self._conn.cursor()
 
@@ -41,7 +45,7 @@ class MultiDoc(object):
 				version integer PRIMARY KEY
 			);
 			"""))
-			self._cursor.execute("INSERT INTO fileversion (version) VALUES (1);")
+			self._cursor.execute("INSERT INTO fileversion (version) VALUES (2);")
 			self._conn.commit()
 
 		with contextlib.suppress(sqlite3.OperationalError):
@@ -54,7 +58,7 @@ class MultiDoc(object):
 				datatype varchar NOT NULL,
 				width integer NOT NULL,
 				height integer NOT NULL,
-				resolution_dpi integer NOT NULL,
+				resolution_dpi float NOT NULL,
 				img_hash_sha256 NULL,
 				orderno integer UNIQUE,
 				CHECK ((sheet_side = 'front') OR (sheet_side = 'back'))
@@ -70,10 +74,10 @@ class MultiDoc(object):
 				derivative_type varchar NOT NULL,
 				data blob NOT NULL,
 				datatype varchar NOT NULL,
-				width integer NOT NULL,
-				height integer NOT NULL,
-				resolution_dpi integer NOT NULL,
-				CHECK ((derivative_type = 'thumb') OR (derivative_type = 'enhanced')),
+				width integer NULL,
+				height integer NULL,
+				resolution_dpi float NULL,
+				CHECK ((derivative_type = 'thumb') OR (derivative_type = 'enhanced') OR (derivative_type = 'ocr'),
 				FOREIGN KEY(side_uuid) REFERENCES image_original(side_uuid)
 			);
 			"""))
@@ -107,22 +111,26 @@ class MultiDoc(object):
 			"""))
 			self._conn.commit()
 
-	def _image_info(self, filename):
-		stdout = subprocess.check_output([ "identify", "-format", "%w %h %x %y %U", filename ])
+	def _image_info(self, filename, input_data = None):
+		if input_data is not None:
+			filename = "-"
+		stdout = subprocess.check_output([ "identify", "-format", "%w %h %x %y %U %m", filename ], input = input_data)
 		stdout = stdout.decode("ascii").split()
-		(width, height, resolution_x, resolution_y, resolution_unit) = stdout
+		(width, height, resolution_x, resolution_y, resolution_unit, datatype) = stdout
 		width = int(width)
 		height = int(height)
 		resolution_x = float(resolution_x)
 		resolution_y = float(resolution_y)
+		datatype = datatype.lower()
 		if abs((resolution_x - resolution_y) / resolution_x) > 0.01:
 			raise Exception("X and Y resolution of image disagree more than 1%% from each other (%f and %f %s, respectively)." % (resolution_x, resolution_y, resolution_unit))
 		resolution = (resolution_x + resolution_y) / 2
 		scalar = {
+			"PixelsPerInch":			1,
 			"PixelsPerCentimeter":		2.54,
 		}
 		resolution_dpi = resolution * scalar[resolution_unit]
-		return self._ImageInfo(width = width, height = height, resolution_dpi = resolution_dpi)
+		return self._ImageInfo(datatype = datatype, width = width, height = height, resolution_dpi = resolution_dpi)
 
 	@property
 	def filename(self):
@@ -151,7 +159,18 @@ class MultiDoc(object):
 		self._cursor.close()
 		self._conn.close()
 
-	def add(self, filename, filetype, side_uuid = None, sheet_uuid = None, sheet_side = "front"):
+	def add_derivative(self, side_uuid, img_data, derivative_type):
+		info = self._image_info(filename = None, input_data = img_data)
+		self._cursor.execute("""INSERT INTO image_derivative (derivative_id, side_uuid, derivative_type, data, datatype, width, height, resolution_dpi) VALUES
+				((SELECT MAX(derivative_id) + 1 FROM image_derivative), ?, ?, ?, ?, ?, ?, ?);""",
+				(side_uuid, derivative_type, img_data, info.datatype, info.width, info.height, info.resolution_dpi))
+
+	def delete_all_derivatives(self):
+		self._cursor.execute("DELETE FROM image_derivative;")
+		self._conn.commit()
+		self._cursor.execute("VACUUM;")
+
+	def add(self, filename, side_uuid = None, sheet_uuid = None, sheet_side = "front"):
 		with open(filename, "rb") as f:
 			data = f.read()
 		img_hash_sha256 = hashlib.sha256(data).hexdigest()
@@ -163,9 +182,27 @@ class MultiDoc(object):
 			sheet_uuid = str(uuid.uuid4())
 
 		self._cursor.execute("INSERT INTO image_original (side_uuid, sheet_uuid, sheet_side, data, datatype, width, height, resolution_dpi, img_hash_sha256, orderno) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-				(side_uuid, sheet_uuid, sheet_side, data, filetype, info.width, info.height, info.resolution_dpi, img_hash_sha256, self.pagecnt))
+				(side_uuid, sheet_uuid, sheet_side, data, info.datatype, info.width, info.height, info.resolution_dpi, img_hash_sha256, self.pagecnt))
 
 		return side_uuid
+
+	def get_side_images_info(self, side_uuid):
+		original_info = self._cursor.execute("SELECT datatype, width, height, resolution_dpi FROM image_original WHERE side_uuid = ?;", (side_uuid, )).fetchone()
+		if original_info is None:
+			raise FileNotFoundError("No side with UUID %s found in MUD." % (side_uuid))
+		original_info = self._ImageInfo(*original_info)
+
+		derivatives = collections.defaultdict(list)
+		derived_imgs = self._cursor.execute("SELECT derivative_id, derivative_type, datatype, width, height, resolution_dpi FROM image_derivative WHERE side_uuid = ?;", (side_uuid, )).fetchall()
+		for derivative_info in derived_imgs:
+			(derivative_id, derivative_type) = derivative_info[:2]
+			image_info = self._ImageInfo(*(derivative_info[2:]))
+			derivative_info = self._DerivativeInfo(derivative_id = derivative_id, image_info = image_info)
+			derivatives[derivative_type].append(derivative_info)
+		return self._ImageCollection(original = original_info, enhanced = derivatives["enhanced"], thumbs = derivatives["thumb"])
+
+	def get_derived_image(self, derivative_id):
+		return self._cursor.execute("SELECT data FROM image_derivative WHERE derivative_id = ?;", (derivative_id, )).fetchone()[0]
 
 	def get_page_image(self, side_uuid, allow_enhanced = True):
 		return self._cursor.execute("SELECT data FROM image_original WHERE side_uuid = ?;", (side_uuid, )).fetchone()[0]
@@ -173,8 +210,8 @@ class MultiDoc(object):
 	def get_page_order(self):
 		return [ row[0] for row in self._cursor.execute("SELECT side_uuid FROM image_original ORDER BY orderno ASC;").fetchall() ]
 
-	def get_page_properties(self, orderno):
-		return { key: value for (key, value) in self._cursor.execute("SELECT key, value FROM image_meta WHERE side_uuid = ?;", (side_uuid)).fetchall() }
+	def get_page_properties(self, side_uuid):
+		return { key: value for (key, value) in self._cursor.execute("SELECT key, value FROM image_meta WHERE side_uuid = ?;", (side_uuid, )).fetchall() }
 
 	def get_all_page_properties(self):
 		return [ self.get_page_properties(side_uuid) for side_uuid in self.get_page_order() ]
@@ -209,6 +246,28 @@ class MultiDoc(object):
 
 	def remove_tag(self, tag):
 		self._cursor.execute("DELETE FROM document_tags WHERE tag = ?;", (tag, ))
+
+	def dump_all_content(self, directory):
+		os.makedirs(directory + "/original/")
+		os.makedirs(directory + "/enhanced/")
+		os.makedirs(directory + "/thumbs/")
+		for (pageno, side_uuid) in enumerate(self.get_page_order(), 1):
+			info = self.get_side_images_info(side_uuid)
+			with open("%s/original/%03d_%s.%s" % (directory, pageno, side_uuid, info.original.datatype), "wb") as f:
+				img_data = self.get_page_image(side_uuid, allow_enhanced = False)
+				f.write(img_data)
+
+			for (derivative_type, derivatives) in [ ("enhanced", info.enhanced), ("thumbs", info.thumbs) ]:
+				for derivative in derivatives:
+					with open("%s/%s/%03d_%s.%s" % (directory, derivative_type, derivative.derivative_id, side_uuid, derivative.image_info.datatype), "wb") as f:
+						img_data = self.get_derived_image(derivative.derivative_id)
+						f.write(img_data)
+
+
+#			orig_filename = "%05d_%s.
+
+#		def get_page_order(self):
+#		return [ row[0] for row in self._cursor.execute("SELECT side_uuid FROM image_original ORDER BY orderno ASC;").fetchall() ]
 
 	def __enter__(self):
 		return self

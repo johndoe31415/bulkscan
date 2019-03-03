@@ -27,7 +27,18 @@ import json
 import uuid
 import collections
 import llpdf
+import threading
+import subprocess
 from FriendlyArgumentParser import FriendlyArgumentParser
+
+def get_cpu_count():
+	cpus = 0
+	with open("/proc/cpuinfo") as f:
+		for line in f:
+			if line.startswith("processor"):
+				cpus += 1
+	return cpus
+default_thread_cnt = get_cpu_count()
 
 parser = FriendlyArgumentParser()
 parser.add_argument("-d", "--dump-data", action = "store_true", help = "Dump data of the document.")
@@ -38,11 +49,39 @@ parser.add_argument("-p", "--create-pdf", action = "store_true", help = "Create 
 parser.add_argument("--pdf-filename", metavar = "filename", type = str, help = "When creating a PDF file, gives the output PDF filename. By default, this is the name of the input file with a \".pdf\" extension.")
 parser.add_argument("--pdf-profile", choices = [ "low-bw", "mid-gray", "mid-color", "high-color" ], default = "mid-gray", help = "When creating a PDF file, gives the quality of the created PDF file. Can be any of %(choices)s, defaults to %(default)s.")
 parser.add_argument("--pdf-original-imgs", action = "store_true", help = "When creating a PDF file, only ever uses original sources, never enhanced images.")
+
+grp = parser.add_mutually_exclusive_group()
+grp.add_argument("-m", "--minify", action = "store_true", help = "When there are alternative image files stored inside the file, erase all but the originals to minify the MUD file itself.")
+grp.add_argument("-e", "--enhance", action = "store_true", help = "When an image does not have enhanced alternatives, create them and store them within the image itself.")
+
+parser.add_argument("--dump-content", metavar = "directory", type = str, help = "Dump entire contents of the MUD file into a directory.")
 parser.add_argument("-r", "--recurse", action = "store_true", help = "When given a directory, traverse it recursively and search for *.mud files inside.")
+parser.add_argument("-t", "--threads", metavar = "count", type = int, default = default_thread_cnt, help = "When processing files, use threaded computation. By default, uses as many threads as the computer has, %(default)d in this case.")
 parser.add_argument("-f", "--force", action = "store_true", help = "Force overwriting of output documents if they exist already.")
 parser.add_argument("-v", "--verbose", action = "store_true", help = "Be verbose about what is performed.")
 parser.add_argument("files", metavar = "filename", type = str, nargs = "+", help = "Filename of the MUD(s).")
 args = parser.parse_args(sys.argv[1:])
+
+class ThreadPool():
+	def __init__(self, max_threads = 1):
+		self._max_threads = max_threads
+		self._sem = threading.Semaphore(self._max_threads)
+
+	def fire(self, thread_fnc, thread_args):
+		self._sem.acquire()
+		def thread_wrapper():
+			try:
+				result = thread_fnc(*thread_args)
+			finally:
+				self._sem.release()				
+			return result		
+		thread = threading.Thread(target = thread_wrapper)
+		thread.start()
+
+	def wait_all(self):
+		for i in range(self._max_threads):
+			self._sem.acquire()
+		self._sem = threading.Semaphore(self._max_threads)
 
 class DocChecker(object):
 	def __init__(self, args):
@@ -51,6 +90,37 @@ class DocChecker(object):
 		self._used_tags = set()
 		self._docnames_by_peer = collections.defaultdict(set)
 		self._filecnt = 0
+		self._lock = threading.Lock()
+		self._file_threads = ThreadPool(self._args.threads)
+	
+	def _enhance_side(self, doc, side_uuid):
+		side_info = doc.get_side_images_info(side_uuid)
+		target_dpi = side_info.original.resolution_dpi
+		if any(target_dpi - enhanced_info.image_info.resolution_dpi > -1 for enhanced_info in side_info.enhanced):			
+			# Already have an enhanced version with (approximately) the full
+			# resolution of the target
+			return
+		cmd = [ "convert" ]
+		cmd += [ "-background", "white" ]
+		cmd += [ "-flatten", "+matte" ]
+		cmd += [ "-brightness-contrast", "+15x+15" ]
+		cmd += [ "-deskew", "40%" ]
+		cmd += [ "-gravity", "north" ]
+		cmd += [ "-normalize" ]
+		cmd += [ "-quality", "85" ]
+		cmd += [ "-units", "PixelsPerInch", "-resample", str(target_dpi) ]
+		cmd += [ "-", "jpeg:-" ]
+
+		original_image_data = doc.get_page_image(side_uuid, allow_enhanced = False)
+		enhanced_image_data = subprocess.check_output(cmd, input = original_image_data)
+		doc.add_derivative(side_uuid, enhanced_image_data, "enhanced")
+
+	def _enhance(self, doc):
+		for side_uuid in doc.get_page_order():
+			self._enhance_side(doc, side_uuid)
+	
+	def _minify(self, doc):
+		doc.delete_all_derivatives()
 
 	def _create_pdf(self, doc, pdf_filename):
 		if (not self._args.force) and os.path.isfile(pdf_filename):
@@ -75,36 +145,61 @@ class DocChecker(object):
 			llpdf.HighlevelPDFImageFunctions(hlpdf.new_page()).put_image(image)
 		pdf_writer.write(pdf, pdf_filename)
 
-	def process_file(self, filename):
-		self._filecnt += 1
-		with doclib.MultiDoc(filename) as doc:
+	def _record_metadata(self, doc):
+		with self._lock:
 			self._used_tags |= doc.tags
 			if doc.peer is not None:
 				self._docnames_by_peer[doc.peer]
 			if (doc.peer is not None) and (doc.docname is not None):
 				self._docnames_by_peer[doc.peer].add(doc.docname)
 
-			doc_uuid = doc.get_document_property("doc_uuid")
-			if (doc_uuid is None) and (self._args.fix_missing_doc_uuid):
-				doc_uuid = str(uuid.uuid4())
-				doc.set_document_property("doc_uuid", doc_uuid)
-			if doc_uuid is not None:
-				self._doc_uuids[doc_uuid].append(filename)
+		doc_uuid = doc.get_document_property("doc_uuid")
+		if (doc_uuid is None) and (self._args.fix_missing_doc_uuid):
+			doc_uuid = str(uuid.uuid4())
+			doc.set_document_property("doc_uuid", doc_uuid)
+		if doc_uuid is not None:
+			self._doc_uuids[doc_uuid].append(doc.filename)
 
-			if self._args.check and (doc_uuid is None):
-				print("Warning: Integrity error in %s, no doc_uuid document property found." % (filename), file = sys.stderr)
+		if self._args.check and (doc_uuid is None):
+			print("Warning: Integrity error in %s, no doc_uuid document property found." % (doc.filename), file = sys.stderr)
 
-			if self._args.dump_data:
-				print("%s: %d pages" % (filename, doc.pagecnt))
-				for (key, value) in sorted(doc.get_document_properties().items()):
-					print("    %-8s: %s" % (key, value))
-				if len(doc.tags) > 0:
-					print("    %-8s: %s" % ("tags", ", ".join(sorted(doc.tags))))
-				print()
+		return doc_uuid
+
+	def _dump_doc_data(self, doc):
+		with self._lock:
+			print("%s: %d pages" % (doc.filename, doc.pagecnt))
+			for (key, value) in sorted(doc.get_document_properties().items()):
+				print("    %-8s: %s" % (key, value))
+			if len(doc.tags) > 0:
+				print("    %-8s: %s" % ("tags", ", ".join(sorted(doc.tags))))
+			print()
+
+	def _dump_content(self, doc, directory):
+		doc.dump_all_content(directory)
+
+	def _process_file_thread(self, filename):
+		self._filecnt += 1
+		with doclib.MultiDoc(filename) as doc:
+			doc_uuid = self._record_metadata(doc)
 
 			if self._args.create_pdf:
 				pdf_filename = os.path.splitext(filename)[0] + ".pdf"
 				self._create_pdf(doc, pdf_filename)
+
+			if self._args.enhance:
+				self._enhance(doc)
+			
+			if self._args.minify:
+				self._minify(doc)
+
+			if self._args.dump_data:
+				self._dump_doc_data(doc)
+			
+			if self._args.dump_content is not None:
+				self._dump_content(doc, self._args.dump_content)
+
+	def process_file(self, filename):
+		self._file_threads.fire(self._process_file_thread, (filename, ))
 
 	def process_dir(self, start_dir):
 		for (basedir, subdirs, files) in os.walk(start_dir):
@@ -131,6 +226,7 @@ class DocChecker(object):
 		if self._args.verbose:
 			print("%d documents analyzed." % (self._filecnt), file = sys.stderr)
 
+
 	def run(self):
 		for filename in self._args.files:
 			if os.path.isdir(filename) and self._args.recurse:
@@ -138,6 +234,7 @@ class DocChecker(object):
 			else:
 				self.process_file(filename)
 		self._post_analysis()
+		self._file_threads.wait_all()
 
 doccheck = DocChecker(args)
 doccheck.run()
