@@ -25,7 +25,7 @@ from flask import Flask, send_file, send_from_directory, jsonify, request, abort
 from .Controller import Controller
 from .Debug import Debug
 
-app = Flask(__name__, static_folder = None)
+app = Flask(__name__)
 ctrlr = Controller(app)
 dbg = Debug()
 

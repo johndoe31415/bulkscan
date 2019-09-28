@@ -35,7 +35,6 @@ class MultiDoc(object):
 	_DerivativeInfo = collections.namedtuple("DerivativeInfo", [ "derivative_id", "image_info" ])
 	def __init__(self, filename):
 		self._filename = filename
-		print(self._filename)
 		self._conn = sqlite3.connect(filename)
 		self._cursor = self._conn.cursor()
 
