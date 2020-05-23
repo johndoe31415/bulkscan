@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 #	bulkscan - Document scanning and maintenance solution
-#	Copyright (C) 2019-2019 Johannes Bauer
+#	Copyright (C) 2019-2020 Johannes Bauer
 #
 #	This file is part of bulkscan.
 #
@@ -49,6 +49,7 @@ parser.add_argument("-p", "--create-pdf", action = "store_true", help = "Create 
 parser.add_argument("--pdf-filename", metavar = "filename", type = str, help = "When creating a PDF file, gives the output PDF filename. By default, this is the name of the input file with a \".pdf\" extension.")
 parser.add_argument("--pdf-profile", choices = [ "low-bw", "mid-gray", "mid-color", "high-color" ], default = "mid-gray", help = "When creating a PDF file, gives the quality of the created PDF file. Can be any of %(choices)s, defaults to %(default)s.")
 parser.add_argument("--pdf-original-imgs", action = "store_true", help = "When creating a PDF file, only ever uses original sources, never enhanced images.")
+#parser.add_argument("-i", "--images", action = "store_true", help = "Extract all original image data from inside the document.")
 
 grp = parser.add_mutually_exclusive_group()
 grp.add_argument("-m", "--minify", action = "store_true", help = "When there are alternative image files stored inside the file, erase all but the originals to minify the MUD file itself.")
@@ -73,8 +74,8 @@ class ThreadPool():
 			try:
 				result = thread_fnc(*thread_args)
 			finally:
-				self._sem.release()				
-			return result		
+				self._sem.release()
+			return result
 		thread = threading.Thread(target = thread_wrapper)
 		thread.start()
 
@@ -92,11 +93,11 @@ class DocChecker(object):
 		self._filecnt = 0
 		self._lock = threading.Lock()
 		self._file_threads = ThreadPool(self._args.threads)
-	
+
 	def _enhance_side(self, doc, side_uuid):
 		side_info = doc.get_side_images_info(side_uuid)
 		target_dpi = side_info.original.resolution_dpi
-		if any(target_dpi - enhanced_info.image_info.resolution_dpi > -1 for enhanced_info in side_info.enhanced):			
+		if any(target_dpi - enhanced_info.image_info.resolution_dpi > -1 for enhanced_info in side_info.enhanced):
 			# Already have an enhanced version with (approximately) the full
 			# resolution of the target
 			return
@@ -118,7 +119,7 @@ class DocChecker(object):
 	def _enhance(self, doc):
 		for side_uuid in doc.get_page_order():
 			self._enhance_side(doc, side_uuid)
-	
+
 	def _minify(self, doc):
 		doc.delete_all_derivatives()
 
@@ -177,6 +178,9 @@ class DocChecker(object):
 	def _dump_content(self, doc, directory):
 		doc.dump_all_content(directory)
 
+	def _dump_image_data(self, doc):
+		raise NotImplementedError("Not implemented")
+
 	def _process_file_thread(self, filename):
 		self._filecnt += 1
 		with doclib.MultiDoc(filename) as doc:
@@ -188,15 +192,18 @@ class DocChecker(object):
 
 			if self._args.enhance:
 				self._enhance(doc)
-			
+
 			if self._args.minify:
 				self._minify(doc)
 
 			if self._args.dump_data:
 				self._dump_doc_data(doc)
-			
+
 			if self._args.dump_content is not None:
 				self._dump_content(doc, self._args.dump_content)
+
+			if self._args.images:
+				self._dump_image_data(doc)
 
 	def process_file(self, filename):
 		self._file_threads.fire(self._process_file_thread, (filename, ))
@@ -225,7 +232,6 @@ class DocChecker(object):
 
 		if self._args.verbose:
 			print("%d documents analyzed." % (self._filecnt), file = sys.stderr)
-
 
 	def run(self):
 		for filename in self._args.files:
