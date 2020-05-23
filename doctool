@@ -49,7 +49,7 @@ parser.add_argument("-p", "--create-pdf", action = "store_true", help = "Create 
 parser.add_argument("--pdf-filename", metavar = "filename", type = str, help = "When creating a PDF file, gives the output PDF filename. By default, this is the name of the input file with a \".pdf\" extension.")
 parser.add_argument("--pdf-profile", choices = [ "low-bw", "mid-gray", "mid-color", "high-color" ], default = "mid-gray", help = "When creating a PDF file, gives the quality of the created PDF file. Can be any of %(choices)s, defaults to %(default)s.")
 parser.add_argument("--pdf-original-imgs", action = "store_true", help = "When creating a PDF file, only ever uses original sources, never enhanced images.")
-#parser.add_argument("-i", "--images", action = "store_true", help = "Extract all original image data from inside the document.")
+parser.add_argument("-i", "--images", action = "store_true", help = "Extract all original image data from inside the document. (TODO: NOT IMPLEMENTED YET)")
 
 grp = parser.add_mutually_exclusive_group()
 grp.add_argument("-m", "--minify", action = "store_true", help = "When there are alternative image files stored inside the file, erase all but the originals to minify the MUD file itself.")

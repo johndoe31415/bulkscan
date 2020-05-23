@@ -1,5 +1,5 @@
 #	bulkscan - Document scanning and maintenance solution
-#	Copyright (C) 2019-2019 Johannes Bauer
+#	Copyright (C) 2019-2020 Johannes Bauer
 #
 #	This file is part of bulkscan.
 #
@@ -76,7 +76,7 @@ class MultiDoc(object):
 				width integer NULL,
 				height integer NULL,
 				resolution_dpi float NULL,
-				CHECK ((derivative_type = 'thumb') OR (derivative_type = 'enhanced') OR (derivative_type = 'ocr'),
+				CHECK ((derivative_type = 'thumb') OR (derivative_type = 'enhanced') OR (derivative_type = 'ocr')),
 				FOREIGN KEY(side_uuid) REFERENCES image_original(side_uuid)
 			);
 			"""))
@@ -247,9 +247,12 @@ class MultiDoc(object):
 		self._cursor.execute("DELETE FROM document_tags WHERE tag = ?;", (tag, ))
 
 	def dump_all_content(self, directory):
-		os.makedirs(directory + "/original/")
-		os.makedirs(directory + "/enhanced/")
-		os.makedirs(directory + "/thumbs/")
+		with contextlib.suppress(FileExistsError):
+			os.makedirs(directory + "/original/")
+		with contextlib.suppress(FileExistsError):
+			os.makedirs(directory + "/enhanced/")
+		with contextlib.suppress(FileExistsError):
+			os.makedirs(directory + "/thumbs/")
 		for (pageno, side_uuid) in enumerate(self.get_page_order(), 1):
 			info = self.get_side_images_info(side_uuid)
 			with open("%s/original/%03d_%s.%s" % (directory, pageno, side_uuid, info.original.datatype), "wb") as f:
