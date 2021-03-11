@@ -76,6 +76,7 @@ div.zoompreview {
 	width: 600px;
 	height: 600px;
 	z-index: 20;
+	pointer-events: none;
 }
 
 img.zoompreview {
