@@ -62,7 +62,7 @@ export class PageThumbnail {
 
 	_on_click(event) {
 		/* this == div */
-		if (event.path[0].nodeName == "BUTTON") {
+		if (event.composedPath()[0].nodeName == "BUTTON") {
 			/* Clicked on one of the buttons, ignore this one. */
 			return;
 		}
