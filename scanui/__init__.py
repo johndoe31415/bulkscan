@@ -1,5 +1,5 @@
 #	bulkscan - Document scanning and maintenance solution
-#	Copyright (C) 2019-2019 Johannes Bauer
+#	Copyright (C) 2019-2023 Johannes Bauer
 #
 #	This file is part of bulkscan.
 #
@@ -44,7 +44,7 @@ def incoming_thumb(filename):
 	if thumb_filename is None:
 		# No such file or directory
 		abort(404)
-	return send_from_directory(ctrlr.config["thumb_dir"], thumb_filename, cache_timeout = 0)
+	return send_from_directory(ctrlr.config["thumb_dir"], thumb_filename, max_age = 0)
 
 @app.route("/incoming", methods = [ "DELETE" ])
 def incoming_delete():
@@ -66,7 +66,7 @@ def incoming_action(action, filename):
 # TODO SANITIZE FILENAME
 @app.route("/incoming/image/<filename>")
 def incoming_image(filename):
-	return send_from_directory(ctrlr.config["incoming_dir"], filename, cache_timeout = 0)
+	return send_from_directory(ctrlr.config["incoming_dir"], filename, max_age = 0)
 
 @app.route("/autocompletion")
 def autocompletion():
